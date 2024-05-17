@@ -1,17 +1,21 @@
 ﻿using ApiPersonajesAWS.Data;
 using ApiPersonajesAWS.Models;
 using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
+using System.Data;
 
 namespace ApiPersonajesAWS.Repositories
 {
     public class RepositoryPersonajes
     {
         private PersonajesContext context;
-        public RepositoryPersonajes(PersonajesContext context)
+        private IConfiguration configuration;
+        public RepositoryPersonajes(PersonajesContext context, IConfiguration configuration)
         {
             this.context = context;
+            this.configuration = configuration;
         }
-        public async Task<List<Personaje>>GetPersonajesAsync()
+        public async Task<List<Personaje>> GetPersonajesAsync()
         {
             return await this.context.Personajes.ToListAsync();
         }
@@ -39,14 +43,25 @@ namespace ApiPersonajesAWS.Repositories
         }
 
 
-        public async Task UpdatePersonajeAsync(int id,string nombre, string imagen)
+        public async Task UpdatePersonajeAsync(int id, string nombre, string imagen)
         {
-            Personaje personaje = await this.FindPersonajeAsync(id);
-            personaje.Nombre = nombre;
-            personaje.Imagen = imagen;
+            string connectionString = this.configuration.GetConnectionString("MySqlTelevision");
 
-            await this.context.SaveChangesAsync();
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                using (MySqlCommand command = new MySqlCommand("ActualizarPersonaje", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("p_id", id);
+                    command.Parameters.AddWithValue("p_nombre", nombre);
+                    command.Parameters.AddWithValue("p_imagen", imagen);
 
+
+                    command.ExecuteNonQuery();
+                }
+            }
         }
+
     }
 }
